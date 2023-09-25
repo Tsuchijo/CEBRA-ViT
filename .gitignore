@@ -1,0 +1,3 @@
+src/*.pth
+src/runs
+src/*.npy
