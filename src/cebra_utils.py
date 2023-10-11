@@ -14,6 +14,8 @@ import cebra.models
 import cebra.data
 from cebra.models.model import _OffsetModel, ConvolutionalModelMixin
 from vit_pytorch import ViT
+from vit_pytorch import SimpleViT     
+
 
 
 class ChangeOrderLayer(nn.Module):
@@ -91,15 +93,15 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
         super().__init__(
             ## create a model which goes from a 128 x 128 image to a 1d vector
             ## of length num_output
-            ChangeOrderLayer(1,1),
+            ChangeOrderLayer(1,2),
             ViT(
                 image_size = num_neurons,
                 patch_size = 8,
                 num_classes = num_output,
                 dim = 128,
                 depth = num_units,
-                heads = 16,
-                mlp_dim = 256,
+                heads = 4,
+                mlp_dim = 128,
                 dropout = 0.1,
                 emb_dropout = 0.1
             ),
@@ -109,8 +111,32 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
             normalize=normalize,
         )
         def get_offset(self):
-            return cebra.data.Offset(0, 1)
+            return cebra.data.Offset(1, 2)
+        
+@cebra.models.register("ViT-16-v2")
+class ViT16v2(_OffsetModel, ConvolutionalModelMixin):
+    def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            ## create a model which goes from a 128 x 128 image to a 1d vector
+            ## of length num_output
+            ChangeOrderLayer(1,2),
+            SimpleViT(
+                image_size = num_neurons,
+                patch_size = 8,
+                num_classes = num_output,
+                dim = 64,
+                depth = num_units,
+                heads = 8,
+                mlp_dim = 256,
+            ),
 
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
+        def get_offset(self):
+            return cebra.data.Offset(1, 2)
+        
 
 
 
