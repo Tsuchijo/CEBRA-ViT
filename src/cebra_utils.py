@@ -93,14 +93,14 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
         super().__init__(
             ## create a model which goes from a 128 x 128 image to a 1d vector
             ## of length num_output
-            ChangeOrderLayer(1,2),
             ViT(
                 image_size = num_neurons,
+                channels=1,
                 patch_size = 8,
                 num_classes = num_output,
                 dim = 128,
                 depth = num_units,
-                heads = 4,
+                heads = 8,
                 mlp_dim = 128,
                 dropout = 0.1,
                 emb_dropout = 0.1
@@ -110,35 +110,82 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
             num_output=num_output,
             normalize=normalize,
         )
-        def get_offset(self):
-            return cebra.data.Offset(1, 2)
+    def get_offset(self):
+        return cebra.data.Offset(0, 1)
+    def forward(self, x):
+        x = x.movedim(1,2)
+        return self.net(x)
         
-@cebra.models.register("ViT-16-v2")
-class ViT16v2(_OffsetModel, ConvolutionalModelMixin):
+
+    
+@cebra.models.register("CNN-offset1")
+class CNNOffset1(_OffsetModel, ConvolutionalModelMixin):
+
     def __init__(self, num_neurons, num_units, num_output, normalize=True):
         super().__init__(
             ## create a model which goes from a 128 x 128 image to a 1d vector
             ## of length num_output
-            ChangeOrderLayer(1,2),
-            SimpleViT(
-                image_size = num_neurons,
-                patch_size = 8,
-                num_classes = num_output,
-                dim = 64,
-                depth = num_units,
-                heads = 8,
-                mlp_dim = 256,
-            ),
+            ChangeOrderLayer(),
+            nn.Conv2d(1, 32, kernel_size=1, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=4, stride=4),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.Linear(4096, num_units),
+            nn.GELU(),
+            nn.Linear(num_units, num_output),
 
             num_input=num_neurons,
             num_output=num_output,
             normalize=normalize,
         )
-        def get_offset(self):
-            return cebra.data.Offset(1, 2)
-        
+
+    # ... and you can also redefine the forward method,
+    # as you would for a typical pytorch model
+
+    def get_offset(self):
+        return cebra.data.Offset(0, 1)
+    
+@cebra.models.register("ResNet-offset1")
+class ResNetOffset1(_OffsetModel, ConvolutionalModelMixin):
+      def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
 
 
+    
+@cebra.models.register("CNN-offset3")
+class CNNOffset3(_OffsetModel, ConvolutionalModelMixin):
+
+    def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            ## create a model which goes from a 128 x 128 image to a 1d vector
+            ## of length num_output
+            ChangeOrderLayer(),
+            nn.Conv2d(3, 16, kernel_size=1, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=4, stride=4),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.Linear(1024, num_output),
+
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
+
+    # ... and you can also redefine the forward method,
+    # as you would for a typical pytorch model
+
+    def get_offset(self):
+        return cebra.data.Offset(1, 2)
 
 
 def process_brain(brain_seq):
