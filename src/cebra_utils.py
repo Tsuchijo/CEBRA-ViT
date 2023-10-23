@@ -125,15 +125,22 @@ class CNNOffset1(_OffsetModel, ConvolutionalModelMixin):
         super().__init__(
             ## create a model which goes from a 128 x 128 image to a 1d vector
             ## of length num_output
-            ChangeOrderLayer(),
             nn.Conv2d(1, 32, kernel_size=1, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=1, stride=1, padding=1),
             nn.GELU(),
             nn.MaxPool2d(kernel_size=4, stride=4),
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.GELU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Flatten(),
             nn.Linear(4096, num_units),
+            nn.GELU(),
+            nn.Linear(num_units, num_units),
             nn.GELU(),
             nn.Linear(num_units, num_output),
 
@@ -141,6 +148,10 @@ class CNNOffset1(_OffsetModel, ConvolutionalModelMixin):
             num_output=num_output,
             normalize=normalize,
         )
+    def forward(self, x):
+        x = x.squeeze()
+        x = x.unsqueeze(1)
+        return self.net(x)
 
     # ... and you can also redefine the forward method,
     # as you would for a typical pytorch model
@@ -152,6 +163,32 @@ class CNNOffset1(_OffsetModel, ConvolutionalModelMixin):
 class ResNetOffset1(_OffsetModel, ConvolutionalModelMixin):
       def __init__(self, num_neurons, num_units, num_output, normalize=True):
         super().__init__(
+            ## CNN architecture takes 64 x 64 image to a 1d vector
+              ChangeOrderLayer(),
+            nn.Conv2d(1, 32, kernel_size=1, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.Linear(2048, num_units),
+            nn.GELU(),
+            nn.Linear(num_units, num_output),
+
             num_input=num_neurons,
             num_output=num_output,
             normalize=normalize,
@@ -187,6 +224,26 @@ class CNNOffset3(_OffsetModel, ConvolutionalModelMixin):
     def get_offset(self):
         return cebra.data.Offset(1, 2)
 
+
+class VideoLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super(VideoLSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        # x has shape (batch_size, sequence_length, input_size)
+        # Initialize hidden state and cell state
+        h0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
+
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
+
+        # Decode the hidden state of the last time step
+        out = self.fc(out[:, -1, :])
+        return out
 
 def process_brain(brain_seq):
     brain_seq = np.array(brain_seq)

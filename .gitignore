@@ -2,3 +2,5 @@ src/*.pth
 src/runs
 src/*.npy
 Models
+FRM1*
+runs

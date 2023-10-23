@@ -37,6 +37,13 @@ def load_pose_data(parent_directory, trial_num):
     data = data.to_numpy()
     return data
 
+## Load image embeddings from .npy files
+def load_embedding_data(parent_directory, trial_num):
+    # Load the data
+    data_path = os.path.join(parent_directory, 'trial_' + str(trial_num) + '_embeddings.npy')
+    data = np.load(data_path)
+    return data
+
 ## Go through all trials and load the brain data for each trial
 def load_all_brain_data_trials(parent_directory, type='gcamp'):
     # Get the number of trials
@@ -142,10 +149,13 @@ def train_model(dataloader, loader_type ,input_size, hidden_units, output_dimens
 # @param data_path: path to the data
 # @param split: the percentage of data to be used for training
 # @return: flattened brain data, flattened feature data, discrete training data, testing brain data, testing feature data
-def load_test_train(data_path, split, image_size=64):
+def load_test_train(data_path, split, image_size=64, use_pose=False, embedding_path=None):
     num_trials = len([x for x in os.listdir(data_path) if 'trial_' in x])
     brain_data = [load_brain_data(data_path, x) for x in range(num_trials)]
-    feature_data = [load_pose_data(data_path, x) for x in range(len(brain_data))]
+    if use_pose == True:
+        feature_data = [load_pose_data(data_path, x) for x in range(len(brain_data))]
+    else:
+        feature_data = [load_embedding_data(embedding_path, x) for x in range(len(brain_data))]
     # flatten the first dimension of brain data
     # n x 288 x 256 x 256 -> n * 288 x 256 x 256
     # before flattening take train test split
@@ -168,14 +178,15 @@ if __name__ == "__main__":
     Image_Size = 64
 
     # Load the data
-    data_path = '/mnt/teams/TM_Lab/Tony/water_reaching/Data/rig1_data/processed/GRL3_2023-07-13_1'
+    data_path = '/mnt/teams/TM_Lab/Tony/water_reaching/Data/rig1_data/processed/FRM1_2023-07-07_1'
+    embedding_path = '/home/murph_4090ws/Documents/Water_Reaching_Classifier/FRM1_7-07'
     print('Loading data')
-    flattened_brain_data, flattened_feature_data, discrete_data, testing_brain_data, testing_feature_data = load_test_train(data_path, 0.8, Image_Size)
+    flattened_brain_data, flattened_feature_data, discrete_data, _, _ = load_test_train(data_path, 1, Image_Size, use_pose=False, embedding_path=embedding_path)
+    # concatenate the data
 
     ## If the trained model does not take 2d input reshape the data by flattening last two dimensions into one vector
     if Model_2D == False:
         flattened_brain_data = np.array([img.flatten() for img in flattened_brain_data])
-        testing_brain_data = np.array([img.flatten() for img in testing_brain_data])
         input_size = Image_Size * Image_Size
     else:
         input_size = Image_Size
@@ -201,6 +212,6 @@ if __name__ == "__main__":
         output_dimension=8,
         model_name=Model_Name,
         device='cuda',
-        output_model_path='modelViT-offset1.pth',
+        output_model_path='ViTModel_offset1_embedding.pth',
     )
 
