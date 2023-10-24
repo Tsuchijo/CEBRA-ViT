@@ -100,7 +100,7 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
                 num_classes = num_output,
                 dim = 128,
                 depth = num_units,
-                heads = 8,
+                heads = 4,
                 mlp_dim = 128,
                 dropout = 0.1,
                 emb_dropout = 0.1

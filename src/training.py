@@ -113,7 +113,7 @@ def train_model(dataloader, loader_type ,input_size, hidden_units, output_dimens
         raise Exception('Invalid loader type')
 
     ## Load criterion
-    criterion = cebra.models.criterions.LearnableCosineInfoNCE(temperature=2, min_temperature=None).to(device)
+    criterion = cebra.models.criterions.LearnableCosineInfoNCE(temperature=2, min_temperature=0.2).to(device)
     start_state = criterion.state_dict()
     ## Load optimizer
     optimizer = torch.optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=0.001)
@@ -174,6 +174,7 @@ def load_test_train(data_path, split, image_size=64, use_pose=False, embedding_p
 if __name__ == "__main__":
     # Set this to true if the model takes 2d input
     Model_2D = True
+    #Model_Name = 'offset1-model-v5'
     Model_Name = 'ViT-16-v1'
     Image_Size = 64
 
@@ -196,7 +197,7 @@ if __name__ == "__main__":
         brain_data=flattened_brain_data,
         feature_data=flattened_feature_data,
         discrete_data=discrete_data,
-        num_steps=10000,
+        num_steps=5000,
         time_offset=30,
         conditional='time_delta',
         batch_size=1024,
@@ -208,10 +209,10 @@ if __name__ == "__main__":
         loader,
         loader_type='single',
         input_size=input_size,
-        hidden_units=4,
+        hidden_units=2,
         output_dimension=8,
         model_name=Model_Name,
         device='cuda',
-        output_model_path='ViTModel_offset1_embedding.pth',
+        output_model_path='ViTModel_offset1_embedding2.pth',
     )
 
