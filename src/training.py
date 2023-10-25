@@ -172,11 +172,27 @@ def load_test_train(data_path, split, image_size=64, use_pose=False, embedding_p
 
 ## Main training loop
 if __name__ == "__main__":
-    # Set this to true if the model takes 2d input
+
+    ## For Training ViT Model
     Model_2D = True
-    #Model_Name = 'offset1-model-v5'
-    Model_Name = 'ViT-16-v1'
+    Model_Name = 'SimpleViT-v2'
     Image_Size = 64
+    depth = 4
+
+    # ## For Training MLP Model
+    # Model_2D = False
+    # Model_Name = 'offset1-model-v5'
+    # depth = 64
+
+    # print parameter count of model
+    model = cebra.models.init(
+        num_neurons=64,
+        num_units=depth,
+        num_output=8,
+        name=Model_Name,
+    )
+    print('Parameter count: ' + str(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+    del model
 
     # Load the data
     data_path = '/mnt/teams/TM_Lab/Tony/water_reaching/Data/rig1_data/processed/FRM1_2023-07-07_1'
@@ -200,7 +216,7 @@ if __name__ == "__main__":
         num_steps=5000,
         time_offset=30,
         conditional='time_delta',
-        batch_size=1024,
+        batch_size=128,
         cebra_offset=cebra.data.datatypes.Offset(0,1),
     )
 
@@ -209,10 +225,10 @@ if __name__ == "__main__":
         loader,
         loader_type='single',
         input_size=input_size,
-        hidden_units=2,
+        hidden_units=depth,
         output_dimension=8,
         model_name=Model_Name,
         device='cuda',
-        output_model_path='ViTModel_offset1_embedding2.pth',
+        output_model_path='SimpleViT-v1.pth',
     )
 

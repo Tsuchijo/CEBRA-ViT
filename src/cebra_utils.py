@@ -15,7 +15,7 @@ import cebra.data
 from cebra.models.model import _OffsetModel, ConvolutionalModelMixin
 from vit_pytorch import ViT
 from vit_pytorch import SimpleViT     
-
+from x_transformers import Encoder
 
 
 class ChangeOrderLayer(nn.Module):
@@ -115,6 +115,98 @@ class ViT16v1(_OffsetModel, ConvolutionalModelMixin):
     def forward(self, x):
         x = x.movedim(1,2)
         return self.net(x)
+    
+@cebra.models.register("ViT-16-v2")
+## Smaller patches and smaller hidden dimension
+class ViT16v2(_OffsetModel, ConvolutionalModelMixin):
+    def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            ## create a model which goes from a 128 x 128 image to a 1d vector
+            ## of length num_output
+            ViT(
+                image_size = num_neurons,
+                channels=1,
+                patch_size = 4,
+                num_classes = num_output,
+                dim = 64,
+                depth = num_units,
+                heads = 3,
+                mlp_dim = 128,
+                dropout = 0.1,
+                emb_dropout = 0.1
+            ),
+
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
+    def get_offset(self):
+        return cebra.data.Offset(0, 1)
+    def forward(self, x):
+        x = x.movedim(1,2)
+        return self.net(x)
+    
+@cebra.models.register("SimpleViT-v1")
+## Using SimpleVit Architecture
+class SimpleViTv1(_OffsetModel, ConvolutionalModelMixin):
+    def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            ## create a model which goes from a 128 x 128 image to a 1d vector
+            ## of length num_output
+            ViT(
+                image_size = num_neurons,
+                channels=1,
+                patch_size = 4,
+                num_classes = num_output,
+                dim = 128,
+                depth = num_units,
+                heads = 4,
+                mlp_dim = 196,
+            ),
+
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
+    def get_offset(self):
+        return cebra.data.Offset(0, 1)
+    def forward(self, x):
+        x = x.movedim(1,2)
+        return self.net(x)
+    
+
+@cebra.models.register("SimpleViT-v2")
+## Using SimpleVit Architecture
+class SimpleViTv2(_OffsetModel, ConvolutionalModelMixin):
+    def __init__(self, num_neurons, num_units, num_output, normalize=True):
+        super().__init__(
+            ## create a model which goes from a 128 x 128 image to a 1d vector
+            ## of length num_output
+            SimpleViT(
+                image_size = num_neurons,
+                channels=1,
+                patch_size = 8,
+                num_classes = num_output,
+                dim = 128,
+                transformer = Encoder(
+                    dim = 128,                  # set to be the same as the wrapper
+                    depth = num_units,
+                    heads = 4,
+                    ff_glu = True,              # ex. feed forward GLU variant https://arxiv.org/abs/2002.05202
+                    residual_attn = True        # ex. residual attention https://arxiv.org/abs/2012.11747
+                )
+            ),
+
+            num_input=num_neurons,
+            num_output=num_output,
+            normalize=normalize,
+        )
+    def get_offset(self):
+        return cebra.data.Offset(0, 1)
+    def forward(self, x):
+        x = x.movedim(1,2)
+        return self.net(x)
+        
         
 
     
@@ -159,43 +251,7 @@ class CNNOffset1(_OffsetModel, ConvolutionalModelMixin):
     def get_offset(self):
         return cebra.data.Offset(0, 1)
     
-@cebra.models.register("ResNet-offset1")
-class ResNetOffset1(_OffsetModel, ConvolutionalModelMixin):
-      def __init__(self, num_neurons, num_units, num_output, normalize=True):
-        super().__init__(
-            ## CNN architecture takes 64 x 64 image to a 1d vector
-              ChangeOrderLayer(),
-            nn.Conv2d(1, 32, kernel_size=1, stride=1, padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Flatten(),
-            nn.Linear(2048, num_units),
-            nn.GELU(),
-            nn.Linear(num_units, num_output),
 
-            num_input=num_neurons,
-            num_output=num_output,
-            normalize=normalize,
-        )
-
-
-    
 @cebra.models.register("CNN-offset3")
 class CNNOffset3(_OffsetModel, ConvolutionalModelMixin):
 
